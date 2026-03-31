@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { getMe } from "../services/authservice"
 
 const AuthContext = createContext<any>(null)
 

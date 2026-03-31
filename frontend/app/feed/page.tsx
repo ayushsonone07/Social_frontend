@@ -1,38 +1,63 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getPosts } from "../../services/postservice"
-import PostCard from "../../components/Postcard"
-import CreatePost from "../../components/Createpost"
+
+type User = {
+  id: number
+  username: string
+  email: string
+}
 
 export default function Feed() {
-
-  const [posts, setPosts] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadPosts()
+    async function fetchUsers() {
+      try {
+        const res = await fetch("https://backend2-seven-sigma.vercel.app/users")
+
+        const data = await res.json()
+
+        setUsers(data)
+      } catch (error) {
+        console.error("Error fetching users:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUsers()
   }, [])
 
-  const loadPosts = async () => {
-    const data = await getPosts()
-    setPosts(data)
-  }
-
-  const addPost = (post: any) => {
-    setPosts([post, ...posts])
+  if (loading) {
+    return (
+      <div className="flex justify-center mt-20 text-xl">
+        Loading feed...
+      </div>
+    )
   }
 
   return (
-    <div className="max-w-xl mx-auto mt-10">
+    <div className="max-w-xl mx-auto mt-10 space-y-4">
 
       <h1 className="text-2xl font-bold mb-6">
         Feed
       </h1>
 
-      <CreatePost onPostCreated={addPost} />
+      {users.map((user) => (
+        <div
+          key={user.id}
+          className="p-4 border rounded-lg shadow-sm bg-white"
+        >
+          <h2 className="font-semibold text-lg">
+            {user.username}
+          </h2>
 
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+          <p className="text-gray-500 text-sm">
+            {user.email}
+          </p>
+        </div>
       ))}
 
     </div>

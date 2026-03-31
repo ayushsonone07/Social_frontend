@@ -1,17 +1,30 @@
-import axios from "axios";
+const API_URL = "https://backend2-seven-sigma.vercel.app"
 
-const api = axios.create({
-  baseURL: "https://backend2-seven-sigma.vercel.app/",
-});
+export async function loginUser(data: any) {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  })
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  return res.json()
+}
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+export async function registerUser(data: any) {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  })
 
-  return config;
-});
+  return res.json()
+}
 
-export default api;
+export async function getUsers() {
+  const res = await fetch(`${API_URL}/users`)
+  return res.json()
+}

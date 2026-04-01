@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
+import { usePathname } from "next/navigation"
 
 type User = {
   username: string
@@ -10,15 +11,20 @@ type User = {
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
+  const pathname = usePathname()
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user")
+
     if (storedUser) {
       setUser(JSON.parse(storedUser))
+    } else {
+      setUser(null)
     }
-  }, [])
+  }, [pathname]) // 👈 runs when route changes
 
   const handleLogout = () => {
+    localStorage.removeItem("token")
     localStorage.removeItem("user")
     window.location.href = "/login"
   }
@@ -26,11 +32,7 @@ export default function Navbar() {
   return (
     <nav className="flex items-center justify-between px-4 py-3 border-b bg-white">
 
-      {/* Hide app name on mobile */}
-      <Link
-        href="/"
-        className="text-xl font-bold hidden md:block"
-      >
+      <Link href="/" className="text-xl font-bold hidden md:block">
         SocialApp
       </Link>
 
@@ -61,21 +63,18 @@ export default function Navbar() {
           </>
         ) : (
           <>
-            {/* Hide login text on mobile */}
             <Link
               href="/login"
-              className="px-3 py-1 rounded bg-blue-500 text-white text-sm md:text-base"
+              className="px-3 py-1 rounded bg-blue-500 text-white text-sm"
             >
-              <span className="md:inline hidden">Login</span>
-              <span className="md:hidden">🔑</span>
+              Login
             </Link>
 
             <Link
               href="/register"
-              className="px-3 py-1 rounded bg-gray-200 text-sm md:text-base"
+              className="px-3 py-1 rounded bg-gray-200 text-sm"
             >
-              <span className="md:inline hidden">Register</span>
-              <span className="md:hidden">➕</span>
+              Register
             </Link>
           </>
         )}

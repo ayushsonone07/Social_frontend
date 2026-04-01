@@ -1,65 +1,48 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { fetchPosts } from "@/lib/api"
+import CreatePost from "@/components/CreatePost"
+import { useUser } from "@/context/UserContext"
 
-type User = {
-  id: number
-  username: string
-  email: string
-}
+export default function FeedPage() {
+  const { user } = useUser()
 
-export default function Feed() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  const [posts, setPosts] = useState([])
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch("https://backend2-seven-sigma.vercel.app/users")
-
-        const data = await res.json()
-
-        setUsers(data)
-      } catch (error) {
-        console.error("Error fetching users:", error)
-      } finally {
-        setLoading(false)
-      }
+    async function loadPosts() {
+      const data = await fetchPosts()
+      setPosts(data)
     }
 
-    fetchUsers()
+    loadPosts()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex justify-center mt-20 text-xl">
-        Loading feed...
-      </div>
-    )
+  console.log(user)
+
+  async function loadPosts() {
+    const data = await fetchPosts()
+    setPosts(data)
   }
 
+  function handleNewPost(post: any) {
+    setPosts([post, ...posts])
+  }
+
+
   return (
-    <div className="max-w-xl mx-auto mt-10 space-y-4">
+    <div className="max-w-xl mx-auto mt-10">
 
-      <h1 className="text-2xl font-bold mb-6">
-        Feed
-      </h1>
+    <CreatePost onPostCreated={handleNewPost} />
+      <h1 className="text-2xl font-bold mb-6">Feed</h1>
 
-      {users.map((user) => (
-        <div
-          key={user.id}
-          className="p-4 border rounded-lg shadow-sm bg-white"
-        >
-          <h2 className="font-semibold text-lg">
-            {user.username}
-          </h2>
-
-          <p className="text-gray-500 text-sm">
-            {user.email}
-          </p>
+      {posts.map((post: any) => (
+        <div key={post.id} className="bg-white shadow p-4 mb-4 rounded-lg">
+          <h2 className="font-semibold">{post.user?.username}</h2>
+          <p>{post.content}</p>
         </div>
       ))}
-
     </div>
   )
 }

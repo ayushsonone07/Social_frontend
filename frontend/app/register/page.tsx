@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { registerUser } from "@/lib/api"
+import { useRouter } from "next/navigation"
 
 type FormData = {
   username: string
@@ -10,6 +12,8 @@ type FormData = {
 }
 
 export default function RegisterForm() {
+  const router = useRouter()
+
   const [formData, setFormData] = useState<FormData>({
     username: "",
     email: "",
@@ -28,6 +32,11 @@ export default function RegisterForm() {
 
     console.log("Register Data:", formData)
 
+    const data = await registerUser(formData)
+
+    if(data){
+      router.push("/login")
+    }
     // Example API call
     // await fetch("YOUR_BACKEND_URL/auth/register", {
     //   method: "POST",

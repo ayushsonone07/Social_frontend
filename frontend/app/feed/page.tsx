@@ -1,43 +1,52 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { fetchPosts } from "@/lib/api"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
+import { useAuthStore } from "@/store/auth"
 import CreatePost from "@/components/CreatePost"
-import { useUser } from "@/context/UserContext"
+
+interface Post {
+  id: number
+  content: string
+  user: {
+    username: string
+  }
+}
 
 export default function FeedPage() {
-  const { user } = useUser()
+  const router = useRouter()
+  const { isAuthenticated } = useAuthStore()
+  const [posts, setPosts] = useState<Post[]>([])
 
-  const [posts, setPosts] = useState([])
-
-  useEffect(() => {
-    async function loadPosts() {
-      const data = await fetchPosts()
+  const loadPosts = useCallback(async () => {
+    try {
+      const data = await apiClient.request<Post[]>("/posts", { method: "GET" })
       setPosts(data)
+    } catch (error) {
+      console.error("Error loading posts:", error)
     }
-
-    loadPosts()
   }, [])
 
-  console.log(user)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login")
+      return
+    }
+    
+    loadPosts()
+  }, [isAuthenticated, router, loadPosts])
 
-  async function loadPosts() {
-    const data = await fetchPosts()
-    setPosts(data)
+  function handleNewPost(post: Post) {
+    setPosts(prev => [post, ...prev])
   }
-
-  function handleNewPost(post: any) {
-    setPosts([post, ...posts])
-  }
-
 
   return (
     <div className="max-w-xl mx-auto mt-10">
-
-    <CreatePost onPostCreated={handleNewPost} />
+      <CreatePost onPostCreated={handleNewPost} />
       <h1 className="text-2xl font-bold mb-6">Feed</h1>
 
-      {posts.map((post: any) => (
+      {posts.map((post) => (
         <div key={post.id} className="bg-white shadow p-4 mb-4 rounded-lg">
           <h2 className="font-semibold">{post.user?.username}</h2>
           <p>{post.content}</p>

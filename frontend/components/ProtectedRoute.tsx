@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuthStore } from "@/store/auth"
 
 export default function ProtectedRoute({
   children,
@@ -9,14 +10,17 @@ export default function ProtectedRoute({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const { isAuthenticated } = useAuthStore()
 
   useEffect(() => {
-    const token = localStorage.getItem("token")
-
-    if (!token) {
+    if (!isAuthenticated) {
       router.push("/login")
     }
-  }, [])
+  }, [isAuthenticated, router])
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   return <>{children}</>
 }

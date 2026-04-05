@@ -1,9 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { createPost } from "@/lib/api"
+import { apiClient } from "@/lib/api-client"
 
-export default function CreatePost({ onPostCreated }: any) {
+interface Post {
+  id: number
+  content: string
+  user: {
+    username: string
+  }
+}
+
+export default function CreatePost({ onPostCreated }: { onPostCreated?: (post: Post) => void }) {
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -15,14 +23,16 @@ export default function CreatePost({ onPostCreated }: any) {
     setLoading(true)
 
     try {
-      const newPost = await createPost(content)
+      const newPost = await apiClient.request<Post>("/posts", {
+        method: "POST",
+        body: JSON.stringify({ content })
+      })
 
       setContent("")
 
       if (onPostCreated) {
         onPostCreated(newPost)
       }
-
     } catch (error) {
       console.error(error)
       alert("Failed to create post")
@@ -34,7 +44,6 @@ export default function CreatePost({ onPostCreated }: any) {
   return (
     <div className="bg-white shadow p-4 rounded-xl mb-6">
       <form onSubmit={handleSubmit}>
-
         <textarea
           placeholder="What's on your mind?"
           value={content}
@@ -50,7 +59,6 @@ export default function CreatePost({ onPostCreated }: any) {
         >
           {loading ? "Posting..." : "Post"}
         </button>
-
       </form>
     </div>
   )

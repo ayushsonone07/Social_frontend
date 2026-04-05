@@ -4,19 +4,17 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/store/auth"
-import styles from "./register.module.css"
+import styles from "./login.module.css"
 
 interface FormErrors {
-  username?: string
   email?: string
   password?: string
 }
 
-export default function RegisterPage() {
+export default function LoginPage() {
   const router = useRouter()
-  const { register, isAuthenticated, isLoading, error, clearError } = useAuthStore()
+  const { login, isAuthenticated, isLoading, error, clearError } = useAuthStore()
 
-  const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<FormErrors>({})
@@ -36,12 +34,6 @@ export default function RegisterPage() {
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
-
-    if (!username) {
-      newErrors.username = "Username is required"
-    } else if (username.length < 3) {
-      newErrors.username = "Username must be at least 3 characters"
-    }
 
     if (!email) {
       newErrors.email = "Email is required"
@@ -67,54 +59,34 @@ export default function RegisterPage() {
       return
     }
 
-    const success = await register({ username, email, password })
+    const success = await login({ email, password })
 
     if (success) {
       router.push("/feed")
     } else {
-      setSubmitError(error || "Registration failed")
+      setSubmitError(error || "Invalid credentials")
     }
   }
 
   return (
-    <div className={styles["register-page"]}>
-      <div className={styles["register-left"]}>
-        <div className={styles["register-brand"]}>
-          <p>Join us</p>
+    <div className={styles["login-page"]}>
+      <div className={styles["login-left"]}>
+        <div className={styles["login-brand"]}>
+          <p>Welcome back</p>
           <h1>Social</h1>
         </div>
 
-        <div className={styles["register-form-container"]}>
-          <h2>Create Account</h2>
-          <p className={styles.subtitle}>Start your journey with us today</p>
+        <div className={styles["login-form-container"]}>
+          <h2>Sign In</h2>
+          <p className={styles.subtitle}>Enter your credentials to access your account</p>
 
           {(submitError || error) && (
-            <div className={styles["register-error"]}>
+            <div className={styles["login-error"]}>
               {submitError || error}
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className={`${styles["input-group"]} ${errors.username ? styles["has-error"] : ""}`}>
-              <label htmlFor="username">Username</label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value)
-                  if (errors.username) {
-                    setErrors({ ...errors, username: undefined })
-                  }
-                }}
-                placeholder="Choose a username"
-                className={errors.username ? styles.error : ""}
-              />
-              {errors.username && (
-                <span className={styles["error-message"]}>{errors.username}</span>
-              )}
-            </div>
-
             <div className={`${styles["input-group"]} ${errors.email ? styles["has-error"] : ""}`}>
               <label htmlFor="email">Email Address</label>
               <input
@@ -147,7 +119,7 @@ export default function RegisterPage() {
                     setErrors({ ...errors, password: undefined })
                   }
                 }}
-                placeholder="Create a password"
+                placeholder="Enter your password"
                 className={errors.password ? styles.error : ""}
               />
               {errors.password && (
@@ -158,25 +130,25 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={styles["register-submit"]}
+              className={styles["login-submit"]}
             >
-              {isLoading ? <><span className={styles.spinner}></span>Creating account...</> : "Create Account"}
+              {isLoading ? <><span className={styles.spinner}></span>Signing in...</> : "Sign In"}
             </button>
           </form>
 
-          <p className={styles["register-footer"]}>
-            Already have an account?{" "}
-            <Link href="/login">Sign in</Link>
+          <p className={styles["login-footer"]}>
+            Do not have an account?{" "}
+            <Link href="/register">Create one</Link>
           </p>
         </div>
       </div>
 
-      <div className={styles["register-right"]}>
-        <div className={styles["register-decoration"]}></div>
-        <div className={styles["register-image-container"]}>
-          <div className={styles["register-quote"]}>
-            <p>&ldquo;The only way to do great work is to love what you do.&rdquo;</p>
-            <cite>— Steve Jobs</cite>
+      <div className={styles["login-right"]}>
+        <div className={styles["login-decoration"]}></div>
+        <div className={styles["login-image-container"]}>
+          <div className={styles["login-quote"]}>
+            <p>&ldquo;The best way to find yourself is to lose yourself in the service of others.&rdquo;</p>
+            <cite>— Mahatma Gandhi</cite>
           </div>
         </div>
       </div>

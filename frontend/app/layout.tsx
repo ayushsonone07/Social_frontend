@@ -12,7 +12,6 @@ export default function RootLayout({
       <body className="bg-gray-100">
           <Navbar />
         <UserProvider>
-
           <main className="max-w-4xl mx-auto p-4">
             {children}
           </main>

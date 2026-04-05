@@ -1,17 +1,20 @@
-"use client"
-
 import { useState } from "react"
 import { apiClient } from "@/lib/api-client"
+import styles from "./CreatePost.module.css"
 
 interface Post {
   id: number
   content: string
-  user: {
-    username: string
-  }
+  user_id: number
 }
 
-export default function CreatePost({ onPostCreated }: { onPostCreated?: (post: Post) => void }) {
+interface CreatePostProps {
+  onPostCreated?: (post: Post) => void
+  currentUserId?: number
+  currentUsername?: string
+}
+
+export default function CreatePost({ onPostCreated, currentUserId, currentUsername }: CreatePostProps) {
   const [content, setContent] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -31,7 +34,10 @@ export default function CreatePost({ onPostCreated }: { onPostCreated?: (post: P
       setContent("")
 
       if (onPostCreated) {
-        onPostCreated(newPost)
+        onPostCreated({
+          ...newPost,
+          user_id: currentUserId || 0
+        })
       }
     } catch (error) {
       console.error(error)
@@ -42,23 +48,32 @@ export default function CreatePost({ onPostCreated }: { onPostCreated?: (post: P
   }
 
   return (
-    <div className="bg-white shadow p-4 rounded-xl mb-6">
+    <div className={styles.createPost}>
+      <div className={styles.createPostHeader}>
+        <div className={styles.avatar}>
+          {currentUsername?.charAt(0).toUpperCase() || "U"}
+        </div>
+        <span className={styles.placeholder}>What&apos;s on your mind?</span>
+      </div>
+      
       <form onSubmit={handleSubmit}>
         <textarea
-          placeholder="What's on your mind?"
+          placeholder="What&apos;s on your mind?"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="w-full border rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={styles.textarea}
           rows={3}
         />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          {loading ? "Posting..." : "Post"}
-        </button>
+        <div className={styles.submitRow}>
+          <button
+            type="submit"
+            disabled={loading || !content.trim()}
+            className={styles.submitBtn}
+          >
+            {loading ? "Posting..." : "Post"}
+          </button>
+        </div>
       </form>
     </div>
   )

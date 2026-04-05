@@ -1,0 +1,86 @@
+.createPost {
+  background: #242424;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.createPostHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  color: #0a0a0a;
+  font-size: 16px;
+}
+
+.placeholder {
+  font-family: 'Outfit', sans-serif;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 15px;
+}
+
+.textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  color: #f5f5f5;
+  resize: none;
+  outline: none;
+  transition: all 0.2s ease;
+  min-height: 80px;
+}
+
+.textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.textarea:focus {
+  border-color: #d4af37;
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.submitRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.submitBtn {
+  background: linear-gradient(135deg, #d4af37 0%, #b8962e 100%);
+  border: none;
+  border-radius: 6px;
+  padding: 10px 24px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

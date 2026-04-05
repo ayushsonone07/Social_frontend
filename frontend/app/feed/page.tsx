@@ -5,26 +5,45 @@ import { useRouter } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { useAuthStore } from "@/store/auth"
 import CreatePost from "@/components/CreatePost"
+import PostCard from "@/components/PostCard"
+import styles from "./feed.module.css"
 
 interface Post {
   id: number
   content: string
-  user: {
+  user_id: number
+  user?: {
+    id: number
     username: string
   }
 }
 
 export default function FeedPage() {
   const router = useRouter()
-  const { isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
   const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
 
   const loadPosts = useCallback(async () => {
     try {
       const data = await apiClient.request<Post[]>("/posts", { method: "GET" })
-      setPosts(data)
+      
+      const postsWithUsers = await Promise.all(
+        data.map(async (post) => {
+          try {
+            const userData = await apiClient.getUserById(post.user_id)
+            return { ...post, user: userData || undefined }
+          } catch {
+            return post
+          }
+        })
+      )
+      
+      setPosts(postsWithUsers.reverse())
     } catch (error) {
       console.error("Error loading posts:", error)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -37,21 +56,64 @@ export default function FeedPage() {
     loadPosts()
   }, [isAuthenticated, router, loadPosts])
 
-  function handleNewPost(post: Post) {
-    setPosts(prev => [post, ...prev])
+  const handleLike = async (postId: number) => {
+    await apiClient.request(`/posts/${postId}/like`, { method: "POST" })
+  }
+
+  const handleComment = async (postId: number, content: string) => {
+    await apiClient.request("/comments", {
+      method: "POST",
+      body: JSON.stringify({ content, post_id: postId })
+    })
+  }
+
+  const handleNewPost = (post: Post) => {
+    setPosts(prev => [{
+      ...post,
+      user: user ? { id: user.id, username: user.username } : undefined
+    }, ...prev])
+  }
+
+  const handleDeletePost = (postId: number) => {
+    setPosts(prev => prev.filter(p => p.id !== postId))
+  }
+
+  if (!isAuthenticated) {
+    return null
   }
 
   return (
-    <div className="max-w-xl mx-auto mt-10">
-      <CreatePost onPostCreated={handleNewPost} />
-      <h1 className="text-2xl font-bold mb-6">Feed</h1>
+    <div className={styles.feedContainer}>
+      <div className={styles.feedHeader}>
+        <h1>Feed</h1>
+      </div>
 
-      {posts.map((post) => (
-        <div key={post.id} className="bg-white shadow p-4 mb-4 rounded-lg">
-          <h2 className="font-semibold">{post.user?.username}</h2>
-          <p>{post.content}</p>
-        </div>
-      ))}
+      <CreatePost 
+        onPostCreated={handleNewPost} 
+        currentUserId={user?.id}
+        currentUsername={user?.username}
+      />
+
+      <div className={styles.postsSection}>
+        {loading ? (
+          <div className={styles.loading}>Loading posts...</div>
+        ) : posts.length === 0 ? (
+          <div className={styles.empty}>
+            <p>No posts yet. Be the first to post something!</p>
+          </div>
+        ) : (
+          posts.map(post => (
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUserId={user?.id}
+              onLike={handleLike}
+              onComment={handleComment}
+              onPostDeleted={handleDeletePost}
+            />
+          ))
+        )}
+      </div>
     </div>
   )
 }

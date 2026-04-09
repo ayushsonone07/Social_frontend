@@ -19,12 +19,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
       router.push("/feed")
     }
-  }, [isAuthenticated, router])
+  }, [mounted, isAuthenticated, router])
 
   useEffect(() => {
     return () => {

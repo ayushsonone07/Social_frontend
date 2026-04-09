@@ -1,82 +1,52 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { apiClient } from "@/lib/api-client"
 import { useAuthStore } from "@/store/auth"
+import { usePostStore } from "@/store/posts"
 import CreatePost from "@/components/CreatePost"
 import PostCard from "@/components/PostCard"
 import styles from "./feed.module.css"
 
-interface Post {
-  id: number
-  content: string
-  user_id: number
-  user?: {
-    id: number
-    username: string
-  }
-}
-
 export default function FeedPage() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const { posts, fetchPosts, likePost, addComment, deletePost } = usePostStore()
+  const [ready, setReady] = useState(false)
 
-  const loadPosts = useCallback(async () => {
-    try {
-      const data = await apiClient.request<Post[]>("/posts", { method: "GET" })
-      
-      const postsWithUsers = await Promise.all(
-        data.map(async (post) => {
-          try {
-            const userData = await apiClient.getUserById(post.user_id)
-            return { ...post, user: userData || undefined }
-          } catch {
-            return post
-          }
-        })
-      )
-      
-      setPosts(postsWithUsers.reverse())
-    } catch (error) {
-      console.error("Error loading posts:", error)
-    } finally {
-      setLoading(false)
-    }
+  useEffect(() => {
+    setReady(true)
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (ready && !isAuthenticated) {
       router.push("/login")
-      return
     }
-    
-    loadPosts()
-  }, [isAuthenticated, router, loadPosts])
+  }, [ready, isAuthenticated, router])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPosts()
+    }
+  }, [isAuthenticated, fetchPosts])
 
   const handleLike = async (postId: number) => {
-    await apiClient.request(`/posts/${postId}/like`, { method: "POST" })
+    await likePost(postId)
   }
 
   const handleComment = async (postId: number, content: string) => {
-    await apiClient.request("/comments", {
-      method: "POST",
-      body: JSON.stringify({ content, post_id: postId })
-    })
-  }
-
-  const handleNewPost = (post: Post) => {
-    setPosts(prev => [{
-      ...post,
-      user: user ? { id: user.id, username: user.username } : undefined
-    }, ...prev])
+    await addComment(postId, content)
   }
 
   const handleDeletePost = (postId: number) => {
-    setPosts(prev => prev.filter(p => p.id !== postId))
+    deletePost(postId)
   }
+
+  const handlePostCreated = () => {
+    fetchPosts()
+  }
+
+  if (!ready) return null
 
   if (!isAuthenticated) {
     return null
@@ -88,16 +58,10 @@ export default function FeedPage() {
         <h1>Feed</h1>
       </div>
 
-      <CreatePost 
-        onPostCreated={handleNewPost} 
-        currentUserId={user?.id}
-        currentUsername={user?.username}
-      />
+      <CreatePost onPostCreated={handlePostCreated} />
 
       <div className={styles.postsSection}>
-        {loading ? (
-          <div className={styles.loading}>Loading posts...</div>
-        ) : posts.length === 0 ? (
+        {posts.length === 0 ? (
           <div className={styles.empty}>
             <p>No posts yet. Be the first to post something!</p>
           </div>

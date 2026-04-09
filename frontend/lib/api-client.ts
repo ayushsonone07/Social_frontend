@@ -1,6 +1,32 @@
 import { LoginCredentials, RegisterData, AuthTokens, User } from "./types"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend2-seven-sigma.vercel.app/api/v1"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://backend-zeta-one-77.vercel.app/api/v1"
+
+export interface Post {
+  id: number
+  content: string
+  user_id: number
+  created_at: string
+  user?: {
+    id: number
+    username: string
+  }
+  likes_count?: number
+  comments_count?: number
+  is_liked?: boolean
+}
+
+export interface Comment {
+  id: number
+  content: string
+  user_id: number
+  post_id: number
+  created_at: string
+  user?: {
+    id: number
+    username: string
+  }
+}
 
 class ApiClient {
   private accessToken: string | null = null
@@ -17,6 +43,22 @@ class ApiClient {
       this.accessToken = localStorage.getItem("access_token")
       this.refreshToken = localStorage.getItem("refresh_token")
     }
+  }
+
+  private getAuthHeaders(): HeadersInit {
+    if (!this.accessToken) {
+      this.loadTokensFromStorage()
+    }
+    
+    const headers: HeadersInit = {
+      "Content-Type": "application/json"
+    }
+    
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`
+    }
+    
+    return headers
   }
 
   private saveTokens(tokens: AuthTokens) {
@@ -58,6 +100,10 @@ class ApiClient {
       })
     }
 
+    if (!this.refreshToken) {
+      return null
+    }
+
     this.isRefreshing = true
 
     try {
@@ -85,18 +131,6 @@ class ApiClient {
       this.isRefreshing = false
       return null
     }
-  }
-
-  private getAuthHeaders(): HeadersInit {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json"
-    }
-    
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`
-    }
-    
-    return headers
   }
 
   private async handleResponse<T>(res: Response): Promise<T> {
@@ -139,7 +173,9 @@ class ApiClient {
         return this.request<T>(endpoint, options, false)
       }
       
-      window.location.href = "/login"
+      if (typeof window !== "undefined") {
+        window.location.href = "/login"
+      }
       throw new Error("Session expired")
     }
 
@@ -153,24 +189,32 @@ class ApiClient {
       body: JSON.stringify(credentials)
     })
 
-    const data = await this.handleResponse<{ access_token: string; user: { id: number; email: string } }>(res)
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Login failed" }))
+      throw new Error(error.message || error.detail || "Login failed")
+    }
+
+    const data = await res.json()
     
-    this.saveTokens({
-      access_token: data.access_token
-    })
+    const tokens: AuthTokens = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      token_type: data.token_type
+    }
+    
+    this.saveTokens(tokens)
 
     const user: User = {
-      id: data.user.id,
-      email: data.user.email,
-      username: ""
+      id: data.user?.id,
+      email: data.user?.email,
+      username: data.user?.username || ""
     }
 
-    return {
-      user,
-      tokens: {
-        access_token: data.access_token
-      }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("user", JSON.stringify(user))
     }
+
+    return { user, tokens }
   }
 
   async register(data: RegisterData): Promise<{ user: User; tokens: AuthTokens }> {
@@ -180,30 +224,43 @@ class ApiClient {
       body: JSON.stringify(data)
     })
 
-    const response = await this.handleResponse<{ id: number; username: string; email: string }>(res)
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Registration failed" }))
+      throw new Error(error.message || error.detail || "Registration failed")
+    }
+
+    const response = await res.json()
     
     const user: User = {
-      id: response.id,
-      username: response.username,
-      email: response.email
+      id: response.id || response.user?.id,
+      username: response.username || response.user?.username || "",
+      email: response.email || response.user?.email || ""
+    }
+
+    const tokens: AuthTokens = {
+      access_token: response.access_token || "",
+      refresh_token: response.refresh_token
+    }
+    
+    if (response.access_token) {
+      this.saveTokens(tokens)
     }
 
     if (typeof window !== "undefined") {
       localStorage.setItem("user", JSON.stringify(user))
     }
 
-    return {
-      user,
-      tokens: {
-        access_token: ""
-      }
-    }
+    return { user, tokens }
   }
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      const user = await this.request<User>("/auth/me", { method: "GET" })
-      return user
+      const user = await this.request<{ id: number; username: string; email: string }>("/auth/me", { method: "GET" })
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
     } catch {
       return null
     }
@@ -222,8 +279,38 @@ class ApiClient {
     }
   }
 
-  logout() {
+  async logout(): Promise<void> {
+    try {
+      await this.request("/auth/logout", { method: "POST" })
+    } catch {
+    }
     this.clearTokens()
+  }
+
+  async getPosts(): Promise<Post[]> {
+    try {
+      return await this.request<Post[]>("/posts", { method: "GET" })
+    } catch {
+      return []
+    }
+  }
+
+  async createPost(content: string): Promise<Post> {
+    return await this.request<Post>("/posts", {
+      method: "POST",
+      body: JSON.stringify({ content })
+    })
+  }
+
+  async likePost(postId: number): Promise<void> {
+    await this.request(`/posts/${postId}/like/`, { method: "POST" })
+  }
+
+  async createComment(postId: number, content: string): Promise<Comment> {
+    return await this.request<Comment>("/comments", {
+      method: "POST",
+      body: JSON.stringify({ post_id: postId, content })
+    })
   }
 
   getAccessToken(): string | null {

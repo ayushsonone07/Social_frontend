@@ -11,7 +11,7 @@ interface AuthStore {
 
   login: (credentials: LoginCredentials) => Promise<boolean>
   register: (data: RegisterData) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   fetchUser: () => Promise<void>
   clearError: () => void
 }
@@ -28,25 +28,22 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null })
         
         try {
-          const { user: partialUser, tokens } = await apiClient.login(credentials)
+          const { user, tokens } = await apiClient.login(credentials)
           
-          const fullUser = await apiClient.getUserById(partialUser.id)
-          
-          if (!fullUser) {
-            throw new Error("Failed to fetch user profile")
-          }
-
           if (typeof window !== "undefined") {
-            const cookieString = `access_token=${tokens.access_token}; path=/; SameSite=Lax`
+            document.cookie = `access_token=${tokens.access_token}; path=/; SameSite=Lax; max-age=86400`
             if (tokens.refresh_token) {
-              document.cookie = `refresh_token=${tokens.refresh_token}; path=/; SameSite=Lax`
+              document.cookie = `refresh_token=${tokens.refresh_token}; path=/; SameSite=Lax; max-age=604800`
             }
-            document.cookie = cookieString
-            localStorage.setItem("user", JSON.stringify(fullUser))
+            localStorage.setItem("access_token", tokens.access_token)
+            if (tokens.refresh_token) {
+              localStorage.setItem("refresh_token", tokens.refresh_token)
+            }
+            localStorage.setItem("user", JSON.stringify(user))
           }
           
           set({
-            user: fullUser,
+            user,
             isAuthenticated: true,
             isLoading: false
           })
@@ -63,23 +60,25 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null })
         
         try {
-          const { user: partialUser } = await apiClient.register(data)
+          const { user, tokens } = await apiClient.register(data)
           
-          const fullUser = await apiClient.getUserById(partialUser.id)
-          
-          if (!fullUser) {
-            throw new Error("Failed to fetch user profile")
+          if (typeof window !== "undefined" && tokens.access_token) {
+            document.cookie = `access_token=${tokens.access_token}; path=/; SameSite=Lax; max-age=86400`
+            if (tokens.refresh_token) {
+              document.cookie = `refresh_token=${tokens.refresh_token}; path=/; SameSite=Lax; max-age=604800`
+            }
+            localStorage.setItem("access_token", tokens.access_token)
+            if (tokens.refresh_token) {
+              localStorage.setItem("refresh_token", tokens.refresh_token)
+            }
+            localStorage.setItem("user", JSON.stringify(user))
           }
           
           set({
-            user: fullUser,
+            user,
             isAuthenticated: true,
             isLoading: false
           })
-
-          if (typeof window !== "undefined") {
-            localStorage.setItem("user", JSON.stringify(fullUser))
-          }
           
           return true
         } catch (error) {
@@ -89,12 +88,15 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
-      logout: () => {
-        apiClient.logout()
+      logout: async () => {
+        await apiClient.logout()
         
         if (typeof window !== "undefined") {
           document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
           document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+          localStorage.removeItem("access_token")
+          localStorage.removeItem("refresh_token")
+          localStorage.removeItem("user")
         }
         
         set({

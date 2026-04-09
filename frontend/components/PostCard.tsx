@@ -1,5 +1,6 @@
 import { useState } from "react"
 import Link from "next/link"
+import { usePostStore } from "@/store/posts"
 import styles from "./PostCard.module.css"
 
 interface PostUser {
@@ -12,13 +13,19 @@ interface Comment {
   content: string
   user_id: number
   post_id: number
+  created_at?: string
+  user?: PostUser
 }
 
 interface Post {
   id: number
   content: string
   user_id: number
+  created_at?: string
   user?: PostUser
+  likes_count?: number
+  comments_count?: number
+  is_liked?: boolean
 }
 
 interface PostCardProps {
@@ -29,21 +36,24 @@ interface PostCardProps {
   onPostDeleted?: (postId: number) => void
 }
 
-export default function PostCard({ post, currentUserId, onLike, onComment, onPostDeleted }: PostCardProps) {
-  const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
+export default function PostCard({ post, currentUserId, onPostDeleted }: PostCardProps) {
+  const [liked, setLiked] = useState(post.is_liked || false)
+  const [likeCount, setLikeCount] = useState(post.likes_count || 0)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
   const [commenting, setCommenting] = useState(false)
   const [posting, setPosting] = useState(false)
 
+  const likePost = usePostStore(state => state.likePost)
+  const addCommentToStore = usePostStore(state => state.addComment)
+
   const handleLike = async () => {
-    if (!onLike || posting) return
+    if (posting) return
     
     try {
       setPosting(true)
-      await onLike(post.id)
+      await likePost(post.id)
       setLiked(!liked)
       setLikeCount(prev => liked ? prev - 1 : prev + 1)
     } catch (error) {
@@ -54,18 +64,20 @@ export default function PostCard({ post, currentUserId, onLike, onComment, onPos
   }
 
   const handleComment = async () => {
-    if (!onComment || !newComment.trim() || commenting) return
+    if (!newComment.trim() || commenting) return
     
     try {
       setCommenting(true)
-      await onComment(post.id, newComment.trim())
+      const comment = await addCommentToStore(post.id, newComment.trim())
+      if (comment) {
+        setComments(prev => [...prev, { 
+          id: comment.id, 
+          content: comment.content, 
+          user_id: currentUserId || 0, 
+          post_id: post.id 
+        }])
+      }
       setNewComment("")
-      setComments(prev => [...prev, { 
-        id: Date.now(), 
-        content: newComment.trim(), 
-        user_id: currentUserId || 0, 
-        post_id: post.id 
-      }])
     } catch (error) {
       console.error("Error commenting:", error)
     } finally {
@@ -74,6 +86,19 @@ export default function PostCard({ post, currentUserId, onLike, onComment, onPos
   }
 
   const isOwnPost = currentUserId && post.user_id === currentUserId
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "Just now"
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    if (minutes < 1) return "Just now"
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    return date.toLocaleDateString()
+  }
 
   return (
     <div className={styles.postCard}>
@@ -85,7 +110,7 @@ export default function PostCard({ post, currentUserId, onLike, onComment, onPos
           <Link href={`/profile/${post.user_id}`} className={styles.username}>
             @{post.user?.username || `user${post.user_id}`}
           </Link>
-          <span className={styles.timestamp}>Just now</span>
+          <span className={styles.timestamp}>{formatDate(post.created_at)}</span>
         </div>
         {isOwnPost && (
           <button className={styles.deleteBtn} onClick={() => onPostDeleted?.(post.id)}>
@@ -102,7 +127,7 @@ export default function PostCard({ post, currentUserId, onLike, onComment, onPos
 
       <div className={styles.postStats}>
         <span>{likeCount > 0 ? `${likeCount} likes` : "No likes yet"}</span>
-        <span>{comments.length > 0 ? `${comments.length} comments` : ""}</span>
+        <span>{(post.comments_count || 0) > 0 ? `${post.comments_count} comments` : ""}</span>
       </div>
 
       <div className={styles.postActions}>

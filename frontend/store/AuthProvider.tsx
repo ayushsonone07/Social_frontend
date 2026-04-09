@@ -1,22 +1,36 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useAuthStore } from "@/store/auth"
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { fetchUser, isAuthenticated } = useAuthStore()
+  const fetchUser = useAuthStore(state => state.fetchUser)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+    
     const initAuth = async () => {
-      const accessToken = localStorage.getItem("access_token")
+      const cookies = document.cookie
+      const hasAccessToken = cookies.includes("access_token=") || cookies.includes("refresh_token=")
+      const hasLocalToken = localStorage.getItem("access_token")
+      const currentState = useAuthStore.getState()
       
-      if (accessToken && !isAuthenticated) {
+      if ((hasAccessToken || hasLocalToken) && !currentState.isAuthenticated) {
         await fetchUser()
       }
     }
 
     initAuth()
-  }, [fetchUser, isAuthenticated])
+  }, [mounted, fetchUser])
+
+  if (!mounted) {
+    return <div style={{ visibility: 'hidden' }}>{children}</div>
+  }
 
   return <>{children}</>
 }

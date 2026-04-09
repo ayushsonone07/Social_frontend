@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { apiClient } from "@/lib/api-client"
 import { useAuthStore } from "@/store/auth"
+import { usePostStore } from "@/store/posts"
 import styles from "./profile.module.css"
 
 interface UserProfile {
@@ -12,23 +13,22 @@ interface UserProfile {
   email: string
 }
 
-interface Post {
-  id: number
-  content: string
-  user_id: number
-}
-
 export default function ProfilePage() {
   const router = useRouter()
   const params = useParams()
   const { user: currentUser, isAuthenticated } = useAuthStore()
+  const posts = usePostStore(state => state.posts)
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null)
-  const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    setReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (ready && !isAuthenticated) {
       router.push("/login")
       return
     }
@@ -56,10 +56,6 @@ export default function ProfilePage() {
           return
         }
         setProfileUser(userData)
-
-        const allPosts = await apiClient.request<Post[]>("/posts", { method: "GET" })
-        const userPosts = allPosts.filter(p => p.user_id === id).reverse()
-        setPosts(userPosts)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load profile")
       } finally {
@@ -68,24 +64,9 @@ export default function ProfilePage() {
     }
 
     loadProfile()
-  }, [isAuthenticated, router, params.userId])
+  }, [ready, isAuthenticated, router, params.userId])
 
-  const _handleDeletePost = (postId: number) => {
-    setPosts(prev => prev.filter(p => p.id !== postId))
-  }
-
-  const _handleLike = async (postId: number) => {
-    await apiClient.request(`/posts/${postId}/like`, { method: "POST" })
-  }
-
-  const _handleComment = async (postId: number, content: string) => {
-    await apiClient.request("/comments", {
-      method: "POST",
-      body: JSON.stringify({ content, post_id: postId })
-    })
-  }
-
-  const _isOwnProfile = profileUser && currentUser?.id === profileUser.id
+  if (!ready) return null
 
   if (!params.userId || loading) {
     return (
@@ -111,7 +92,9 @@ export default function ProfilePage() {
     )
   }
 
-  const isOwnProfile = currentUser?.id === profileUser.id
+  const userPosts = posts
+    .filter(p => p.user_id === profileUser.id)
+    .sort((a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime())
 
   return (
     <div className={styles.container}>
@@ -127,21 +110,21 @@ export default function ProfilePage() {
 
       <div className={styles.statsBar}>
         <div className={styles.statItem}>
-          <span className={styles.statNumber}>{posts.length}</span>
+          <span className={styles.statNumber}>{userPosts.length}</span>
           <span className={styles.statLabel}>Posts</span>
         </div>
       </div>
 
       <div className={styles.postsSection}>
         <h2>Posts</h2>
-        {posts.length === 0 ? (
+        {userPosts.length === 0 ? (
           <div className={styles.noPosts}>No posts yet</div>
         ) : (
-          posts.map(post => (
+          userPosts.map(post => (
             <div key={post.id} className={styles.profilePost}>
               <p>{post.content}</p>
               <div className={styles.postMeta}>
-                <span>Just now</span>
+                <span>{new Date(post.created_at || "").toLocaleDateString()}</span>
               </div>
             </div>
           ))

@@ -21,12 +21,17 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
       router.push("/feed")
     }
-  }, [isAuthenticated, router])
+  }, [mounted, isAuthenticated, router])
 
   useEffect(() => {
     return () => {
@@ -70,9 +75,9 @@ export default function RegisterPage() {
     const success = await register({ username, email, password })
 
     if (success) {
-      router.push("/feed")
+      router.push("/login")
     } else {
-      setSubmitError(error || "Registration failed")
+      setSubmitError(error || "Registration failed. Please try logging in.")
     }
   }
 
